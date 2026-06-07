@@ -38,8 +38,13 @@ The add-on page also gives you, for free:
 
 1. Install and **Start** the add-on. (It starts fine with no speaker and no login configured.)
 2. Open the UI from the **Qobuz** entry in the HA sidebar (or the **Open Web UI** button).
-3. Click **Log in to Qobuz** and complete the login. The token is stored in the add-on's
-   `/data` and persists across restarts — you only do this once.
+3. Click **Log in to Qobuz**. Because Qobuz (and providers like Google on its sign-in page)
+   refuse to be shown inside Home Assistant's panel, login **opens in a new browser tab** —
+   allow pop-ups for Home Assistant if your browser blocks it. Complete the login there; this
+   panel switches to "connected" automatically within a few seconds, and you can close the tab.
+   The token is stored in the add-on's `/data` and persists across restarts — you only do this
+   once. _Fallback:_ you can also log in by opening the add-on directly at
+   `http://<your-ha-host>:8689` in any browser on your network.
 4. Either set `dlna_ip` in the **Configuration** tab (see below) or add a speaker from the
    Web UI (it can discover renderers on your network).
 5. Open the Qobuz app on your phone/desktop, pick the device from the Connect menu, and play.
