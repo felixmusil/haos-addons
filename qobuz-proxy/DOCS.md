@@ -44,6 +44,20 @@ The add-on page also gives you, for free:
    Web UI (it can discover renderers on your network).
 5. Open the Qobuz app on your phone/desktop, pick the device from the Connect menu, and play.
 
+## Updating
+
+Home Assistant updates this add-on the same way as any other — there is **no "update" option in
+the add-on configuration**, and you should **not** uninstall/reinstall (that deletes `/data`,
+losing your Qobuz login and saved speakers).
+
+- When a newer version is published, an **Update** button appears on the add-on page. Click it.
+  Your login and speakers are preserved (they live in `/data`, which survives updates).
+- If you don't see the button yet, force a refresh:
+  **Settings → Add-ons → Add-on Store → ⋮ → Check for updates**, then reopen the add-on page.
+
+The Update button only appears once a higher `version` (with a matching published image) is
+available in the repository — so a new release has to be pushed first.
+
 ## Options
 
 ```yaml
@@ -58,7 +72,7 @@ log_level: info
 | Option | Description |
 | ------ | ----------- |
 | `device_name` | Name shown in the Qobuz app's Connect device list. |
-| `dlna_ip` | IP of your DLNA renderer. **Optional** — if set, that renderer is configured automatically on start. If left blank, start the add-on and add a speaker from the Web UI instead. |
+| `dlna_ip` | IP of your DLNA renderer. **Optional** — if set, that renderer is configured automatically on start. If left **blank** (the default), the add-on starts unconfigured so you can add a speaker from the Web UI. Note: once you add a speaker in the Web UI it is saved to `/data`, and that saved speaker takes priority over this option on later restarts. |
 | `dlna_port` | DLNA control port (Sonos uses `1400`). |
 | `dlna_fixed_volume` | `true` to ignore Qobuz volume commands (use when an external amp controls volume). |
 | `max_quality` | `auto` (detect from the renderer), or one of `5` (MP3), `6` (CD), `7` (Hi-Res 96k), `27` (Hi-Res 192k). |
