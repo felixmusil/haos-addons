@@ -1,5 +1,5 @@
 name: Qobuz Proxy
-version: "1.3.8"
+version: "1.3.9"
 slug: qobuz_proxy
 description: Headless Qobuz Connect player that bridges to a DLNA renderer
 url: https://github.com/felixmusil/haos-addons/tree/main/qobuz-proxy
