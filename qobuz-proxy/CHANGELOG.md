@@ -5,9 +5,18 @@ is built `FROM ghcr.io/felixmusil/qobuz-proxy`).
 
 | Add-on version | Bundles `qobuz-proxy` |
 | -------------- | --------------------- |
+| 1.3.10         | 1.3.8                 |
 | 1.3.9          | 1.3.7                 |
 | 1.3.8          | 1.3.7                 |
 | 1.3.5          | 1.3.5                 |
+
+## 1.3.10
+
+_Bundles `qobuz-proxy` v1.3.8._
+
+- Fix Qobuz login from the sidebar panel. Qobuz (and providers like Google) refuse to be framed,
+  so login now opens in a new browser tab; the panel switches to "connected" automatically once
+  login completes.
 
 ## 1.3.9
 
