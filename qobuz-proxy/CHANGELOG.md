@@ -5,10 +5,22 @@ is built `FROM ghcr.io/felixmusil/qobuz-proxy`).
 
 | Add-on version | Bundles `qobuz-proxy` |
 | -------------- | --------------------- |
+| 1.3.11         | 1.3.9                 |
 | 1.3.10         | 1.3.8                 |
 | 1.3.9          | 1.3.7                 |
 | 1.3.8          | 1.3.7                 |
 | 1.3.5          | 1.3.5                 |
+
+## 1.3.11
+
+_Bundles `qobuz-proxy` v1.3.9._
+
+- Fix track-switch reliability. Rapidly skipping tracks in the Qobuz app no longer wedges the
+  DLNA renderer (which previously required restarting both the add-on and the device). Playback
+  commands are now serialized so overlapping SOAP control requests can't pile up, a stuck renderer
+  recovers on its own via a session and transport reset, and the audio proxy retries with a fresh
+  stream URL before sending response headers. SOAP errors are also logged with their exception
+  type instead of an empty message.
 
 ## 1.3.10
 
