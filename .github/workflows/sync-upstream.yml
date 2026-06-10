@@ -1,0 +1,76 @@
+name: Sync upstream qobuz-proxy release
+
+on:
+  schedule:
+    - cron: "17 * * * *"   # hourly; adjust as desired
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve versions
+        id: v
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          latest=$(gh release view --repo felixmusil/qobuz-proxy --json tagName -q .tagName)
+          latest=${latest#v}
+          current=$(grep -E '^version:' qobuz-proxy/config.yaml | sed -E 's/version:[[:space:]]*"?([^"]+)"?/\1/')
+          highest=$(printf '%s\n%s\n' "$current" "$latest" | sort -V | tail -1)
+          if [ "$latest" != "$current" ] && [ "$highest" = "$latest" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "latest=$latest"   >> "$GITHUB_OUTPUT"
+          echo "current=$current" >> "$GITHUB_OUTPUT"
+
+      - name: Apply bump
+        if: steps.v.outputs.changed == 'true'
+        env:
+          V: ${{ steps.v.outputs.latest }}
+        run: |
+          # config.yaml version (1:1 with upstream)
+          sed -i -E "s/^version:.*/version: \"$V\"/" qobuz-proxy/config.yaml
+          # pin the upstream image to the exact version (reproducible builds)
+          sed -i -E "s|^ARG BUILD_FROM=.*|ARG BUILD_FROM=ghcr.io/felixmusil/qobuz-proxy:v$V|" qobuz-proxy/Dockerfile
+          # prepend a changelog stub + table row (edit before merge)
+          python3 - "$V" <<'PY'
+          import sys, re, pathlib
+          v = sys.argv[1]
+          p = pathlib.Path("qobuz-proxy/CHANGELOG.md")
+          t = p.read_text()
+          # add a row right under the table header separator line
+          t = re.sub(r"(\| -+ \| -+ \|\n)", rf"\1| {v:<14} | {v:<21} |\n", t, count=1)
+          # insert a new section before the first existing "## " heading
+          stub = (f"## {v}\n\n_Bundles `qobuz-proxy` v{v}._\n\n"
+                  f"- TODO: summarize upstream changes (auto-generated stub — edit before merging).\n\n")
+          t = re.sub(r"(?m)^## ", stub + "## ", t, count=1)
+          p.write_text(t)
+          PY
+
+      - name: Open PR
+        if: steps.v.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: sync/upstream-${{ steps.v.outputs.latest }}
+          title: "chore: bump add-on to qobuz-proxy v${{ steps.v.outputs.latest }}"
+          commit-message: "chore(addon): sync to qobuz-proxy v${{ steps.v.outputs.latest }}"
+          body: |
+            Automated sync to upstream **qobuz-proxy v${{ steps.v.outputs.latest }}**
+            (was ${{ steps.v.outputs.current }}).
+
+            - `config.yaml` version → ${{ steps.v.outputs.latest }}
+            - `Dockerfile` `BUILD_FROM` pinned to `qobuz-proxy:v${{ steps.v.outputs.latest }}`
+            - `CHANGELOG.md` stub added — **edit the notes before merging**
+
+            After merge, publish by creating tag/release `v${{ steps.v.outputs.latest }}`
+            (triggers `build.yml`).
+          labels: automated, upstream-sync
