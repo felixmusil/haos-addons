@@ -4,6 +4,12 @@ A small collection of [Home Assistant](https://www.home-assistant.io/) add-ons.
 
 ## Installation
 
+**Quick add** — click to open Home Assistant and add this repository:
+
+[![Open your Home Assistant instance and show the add add-on repository dialog with this repository URL pre-filled.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Ffelixmusil%2Fhaos-addons)
+
+Or add it manually:
+
 1. In Home Assistant, go to **Settings → Add-ons → Add-on Store**.
 2. Click the **⋮** menu (top-right) → **Repositories**.
 3. Add this URL:
