@@ -39,7 +39,7 @@ jobs:
       - name: Resolve versions
         id: v
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.UPSTREAM_GH_TOKEN || secrets.GITHUB_TOKEN }}
           ADDON: ${{ matrix.addon }}
           UPSTREAM: ${{ matrix.upstream }}
           REPO: ${{ matrix.repo }}
