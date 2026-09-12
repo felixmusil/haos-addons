@@ -3,7 +3,7 @@
 # Thin wrapper over the standalone tts-server application image: it only adds
 # `jq` and a launcher that maps the Home Assistant options (/data/options.json)
 # to the environment variables the app already understands.
-ARG BUILD_FROM=ghcr.io/felixmusil/tts-server:v0.2.0
+ARG BUILD_FROM=ghcr.io/felixmusil/tts-server:v0.2.1
 FROM ${BUILD_FROM}
 
 # Need root to write /data and install packages.
