@@ -1,5 +1,5 @@
 name: TTS Coordinator
-version: "0.1.0"
+version: "0.2.0"
 slug: tts_coordinator
 description: WuxiaWorld → per-chapter Audiobookshelf audiobooks; queue + web UI, synthesis on remote workers
 url: https://github.com/felixmusil/haos-addons/tree/main/tts-coordinator
