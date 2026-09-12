@@ -1,0 +1,38 @@
+name: TTS Coordinator
+version: "0.1.0"
+slug: tts_coordinator
+description: WuxiaWorld → per-chapter Audiobookshelf audiobooks; queue + web UI, synthesis on remote workers
+url: https://github.com/felixmusil/haos-addons/tree/main/tts-coordinator
+arch:
+  - aarch64
+  - amd64
+image: ghcr.io/felixmusil/tts-coordinator-haos-addon
+init: false
+ingress: true
+ingress_port: 8880
+panel_icon: mdi:book-open-variant
+panel_title: TTS Library
+ports:
+  8880/tcp: 8880
+ports_description:
+  8880/tcp: Web UI + worker API (tts-worker connects here over LAN/Tailscale; set api_token)
+options:
+  abs_url: ""
+  abs_token: ""
+  abs_library: ""
+  wuxiaworld_token: ""
+  api_token: ""
+  ntfy_topic: ""
+  default_engine: kokoro
+  default_voice: af_heart
+  log_level: info
+schema:
+  abs_url: str?
+  abs_token: password?
+  abs_library: str?
+  wuxiaworld_token: password?
+  api_token: password?
+  ntfy_topic: str?
+  default_engine: "list(fake|kokoro|piper|kyutai|f5)"
+  default_voice: str?
+  log_level: "list(debug|info|warning|error)"

@@ -25,6 +25,7 @@ Or add it manually:
 | Add-on | Description |
 | ------ | ----------- |
 | [Qobuz Proxy](./qobuz-proxy) | Headless Qobuz Connect player that bridges to a DLNA renderer (Sonos, HEOS, …). |
+| [TTS Coordinator](./tts-coordinator) | WuxiaWorld → per-chapter Audiobookshelf audiobooks: queue + web UI here, synthesis on pull-based `tts-worker` machines (laptop over Tailscale). |
 
 ## Architectures
 
@@ -37,21 +38,26 @@ A typical loop, fastest to most realistic. The first three steps don't need Home
 
 ### 1. Lint the add-on config
 
-`config.yaml` is validated automatically on every push/PR by
-[`.github/workflows/lint.yml`](.github/workflows/lint.yml) (the
-[`frenck/action-addon-linter`](https://github.com/frenck/action-addon-linter)).
+Every add-on's `config.yaml` is validated automatically on every push/PR by
+[`.github/workflows/lint.yml`](.github/workflows/lint.yml) (a matrix over the add-on directories
+running the [`frenck/action-addon-linter`](https://github.com/frenck/action-addon-linter)). The
+same workflow also runs the repo's own tests: `tts-coordinator/tests/run_sh_test.sh` drives
+`run.sh` through a fake binary (options.json → env → exec), and `tests/test_workflows.py` checks
+that the release workflows push exactly the `image:version` each `config.yaml` declares.
 
-To run the same linter locally:
+To run the same linter locally (swap the add-on directory as needed):
 
 ```bash
 docker run --rm -e INPUT_PATH=/addon -v "$PWD/qobuz-proxy":/addon \
   $(docker build -q https://github.com/frenck/action-addon-linter.git#v2:src)
 ```
 
-A quick YAML sanity check without Docker:
+Quick checks without Docker:
 
 ```bash
-python3 -c "import yaml; yaml.safe_load(open('qobuz-proxy/config.yaml')); print('OK')"
+python3 -c "import yaml; yaml.safe_load(open('tts-coordinator/config.yaml')); print('OK')"
+bash tts-coordinator/tests/run_sh_test.sh            # needs jq
+python3 -m pytest tests -q                           # needs pytest + pyyaml
 ```
 
 ### 2. Run the add-on image directly (fast inner loop)
@@ -104,13 +110,25 @@ GitHub, add this repo URL under **Settings → Add-ons → Add-on Store → ⋮ 
 
 Because of the pre-built-image strategy, the add-on image must be published to GHCR **before**
 Home Assistant can install it, and its tag must match the `version` in `config.yaml` (the
-release workflow strips the leading `v`, so tag `v1.3.8` → image `:1.3.8` → `version: "1.3.8"`).
+build workflow reads the version from `config.yaml`, so `version: "1.3.8"` → image `:1.3.8`).
 
 ### Releasing
 
-Pushing a `v*` tag triggers [`.github/workflows/build.yml`](.github/workflows/build.yml), which
-builds and pushes the multi-arch (`amd64` + `arm64`) add-on image to GHCR. Bump the add-on's
-`config.yaml` `version` and `CHANGELOG.md` to match the tag.
+The add-ons are versioned independently, so a release tag names the add-on it publishes:
+
+| Tag | Builds |
+| --- | ------ |
+| `tts-coordinator-v0.1.0` | `tts-coordinator` |
+| `qobuz-proxy-v1.4.0` | `qobuz-proxy` |
+| `v1.4.0` | `qobuz-proxy` (legacy namespace, used by `scripts/release.sh`) |
+
+Pushing such a tag triggers [`.github/workflows/build.yml`](.github/workflows/build.yml), which
+builds and pushes the multi-arch (`amd64` + `arm64`) image for that add-on only, tagged with the
+`image:version` from its `config.yaml`. The run fails before pushing anything if the tag's
+version does not equal the `config.yaml` version, so bump `config.yaml` and `CHANGELOG.md`
+first. [`sync-upstream.yml`](.github/workflows/sync-upstream.yml) opens that bump PR
+automatically (hourly) whenever the upstream app (`qobuz-proxy`, `tts-server`) publishes a
+GitHub release; its body names the tag to push after merging.
 
 The **Update** button on a user's add-on page only appears once the higher `version` *and* its
 matching `:<version>` image are published — i.e. after this workflow has run. Users then click

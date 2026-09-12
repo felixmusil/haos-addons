@@ -1,27 +1,102 @@
 name: Build add-on image
 
+# Add-ons in this repo are versioned independently, so a tag names the add-on it releases:
+#   tts-coordinator-v0.1.0   -> builds tts-coordinator
+#   qobuz-proxy-v1.4.0       -> builds qobuz-proxy
+#   v1.4.0                   -> builds qobuz-proxy (legacy namespace; scripts/release.sh)
+# The version the Supervisor pulls is always the add-on's config.yaml `version`; the tag must
+# agree with it or the run fails before anything is pushed.
 on:
   push:
     tags:
       - 'v*'
+      - '*-v*'
   workflow_dispatch:
+    inputs:
+      addon:
+        description: Add-on to build (or "all")
+        type: choice
+        default: all
+        options:
+          - all
+          - qobuz-proxy
+          - tts-coordinator
 
 permissions:
   contents: read
   packages: write
 
 jobs:
-  build:
-    name: Build & push qobuz-proxy add-on image
+  plan:
+    name: Select add-ons
     runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.sel.outputs.matrix }}
     steps:
       - uses: actions/checkout@v4
 
-      # Supervisor pulls `{image}:{version}` where {version} is the config.yaml
-      # value (no leading "v"), so strip it from the git tag.
+      - name: Select add-ons
+        id: sel
+        env:
+          INPUT_ADDON: ${{ inputs.addon }}
+        run: |
+          set -euo pipefail
+          addons=$(for d in */; do [ -f "$d/config.yaml" ] && echo "${d%/}"; done)
+          config_version() {
+            grep -m1 -E '^version:' "$1/config.yaml" | sed -E 's/^version:[[:space:]]*"?([^"]+)"?.*/\1/'
+          }
+          if [ "${GITHUB_EVENT_NAME:-}" = "workflow_dispatch" ]; then
+            sel="${INPUT_ADDON:-all}"
+            if [ "$sel" = "all" ]; then selected="$addons"; else selected="$sel"; fi
+          else
+            ref="${GITHUB_REF_NAME:?}"
+            selected=""
+            expected=""
+            for a in $addons; do
+              case "$ref" in
+                "$a-v"*) selected="$a"; expected="${ref#"$a-v"}" ;;
+              esac
+            done
+            if [ -z "$selected" ]; then
+              case "$ref" in
+                v*) selected="qobuz-proxy"; expected="${ref#v}" ;;
+                *) echo "::error::tag '$ref' does not name an add-on (<addon>-vX.Y.Z or vX.Y.Z)"; exit 1 ;;
+              esac
+            fi
+            current="$(config_version "$selected")"
+            if [ "$current" != "$expected" ]; then
+              echo "::error::tag '$ref' says $expected but $selected/config.yaml says $current"
+              exit 1
+            fi
+          fi
+          matrix=$(printf '%s\n' $selected | jq -R . | jq -sc .)
+          echo "building: $matrix"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build & push ${{ matrix.addon }} add-on image
+    needs: plan
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        addon: ${{ fromJson(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Supervisor pulls `{config.yaml image}:{config.yaml version}` — read both from the add-on's
+      # config.yaml so that file is the single source of truth.
       - name: Compute version
-        id: ver
-        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+        id: meta
+        env:
+          ADDON: ${{ matrix.addon }}
+        run: |
+          set -euo pipefail
+          version=$(grep -m1 -E '^version:' "$ADDON/config.yaml" | sed -E 's/^version:[[:space:]]*"?([^"]+)"?.*/\1/')
+          image=$(grep -m1 -E '^image:' "$ADDON/config.yaml" | sed -E 's/^image:[[:space:]]*"?([^"[:space:]]+)"?.*/\1/')
+          [ -n "$version" ] && [ -n "$image" ]
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "image=$image" >> "$GITHUB_OUTPUT"
 
       - uses: docker/setup-qemu-action@v3
 
@@ -35,9 +110,9 @@ jobs:
 
       - uses: docker/build-push-action@v6
         with:
-          context: ./qobuz-proxy
+          context: ./${{ matrix.addon }}
           push: true
           platforms: linux/amd64,linux/arm64
           tags: |
-            ghcr.io/${{ github.repository_owner }}/qobuz-proxy-haos-addon:latest
-            ghcr.io/${{ github.repository_owner }}/qobuz-proxy-haos-addon:${{ steps.ver.outputs.version }}
+            ${{ steps.meta.outputs.image }}:latest
+            ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.version }}

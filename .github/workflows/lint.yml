@@ -9,12 +9,34 @@ on:
 
 jobs:
   addon-linter:
-    name: Add-on linter
+    name: Add-on linter (${{ matrix.addon }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        addon:
+          - qobuz-proxy
+          - tts-coordinator
     steps:
       - uses: actions/checkout@v4
 
       - name: Run Home Assistant Add-on Lint
         uses: frenck/action-addon-linter@v2
         with:
-          path: "./qobuz-proxy"
+          path: "./${{ matrix.addon }}"
+
+  # Checks the linter cannot: the run.sh option→env mapping through a fake binary, and that the
+  # release workflows push the image tag the Supervisor will actually pull for every add-on.
+  tests:
+    name: run.sh + workflow tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: run.sh (options.json → env → exec)
+        run: bash tts-coordinator/tests/run_sh_test.sh
+
+      - name: Workflow / config contract tests
+        run: |
+          python3 -m pip install --quiet pytest pyyaml
+          python3 -m pytest tests -q
