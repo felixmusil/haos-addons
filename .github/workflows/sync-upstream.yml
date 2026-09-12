@@ -16,11 +16,21 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # `repo` defaults to felixmusil/<upstream> (our own upstreams tag their images `:v<version>`
+        # and the add-on version is 1:1 with the upstream release). A third-party upstream sets
+        # `repo` explicitly and `version_suffix`: the add-on version is then
+        # `<upstream version><version_suffix>` (e.g. 5.5.2.0 = wrapper revision 0 of 5.5.2) and the
+        # Dockerfile's BUILD_FROM keeps its image name, only the tag is rewritten to the bare
+        # upstream version (haugene pushes `5.5.2`, not `v5.5.2`).
         include:
           - addon: qobuz-proxy
             upstream: qobuz-proxy
           - addon: tts-coordinator
             upstream: tts-server
+          - addon: transmission-nordvpn
+            upstream: transmission-openvpn        # label used in CHANGELOG.md (`Bundles \`transmission-openvpn\``)
+            repo: haugene/docker-transmission-openvpn
+            version_suffix: ".0"
     steps:
       - uses: actions/checkout@v4
 
@@ -32,50 +42,86 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ADDON: ${{ matrix.addon }}
           UPSTREAM: ${{ matrix.upstream }}
+          REPO: ${{ matrix.repo }}
+          VERSION_SUFFIX: ${{ matrix.version_suffix }}
         run: |
           set -uo pipefail
-          latest=$(gh release view --repo "felixmusil/$UPSTREAM" --json tagName -q .tagName 2>/dev/null || true)
+          repo="${REPO:-felixmusil/$UPSTREAM}"
+          latest=$(gh release view --repo "$repo" --json tagName -q .tagName 2>/dev/null || true)
           latest=${latest#v}
           current=$(grep -m1 -E '^version:' "$ADDON/config.yaml" | sed -E 's/^version:[[:space:]]*"?([^"]+)"?.*/\1/')
+          # With a wrapper suffix the add-on version is `<upstream>.<wrapper revision>`; only the
+          # upstream part is compared, so a wrapper-only bump (5.5.2.3) still reads as "same upstream".
+          current_base="$current"
+          if [ -n "$VERSION_SUFFIX" ]; then
+            current_base="${current%.*}"
+          fi
           changed=false
+          version=""
           if [ -z "$latest" ]; then
-            echo "No published release found for felixmusil/$UPSTREAM — nothing to sync."
+            echo "No published release found for $repo — nothing to sync."
           else
-            highest=$(printf '%s\n%s\n' "$current" "$latest" | sort -V | tail -1)
-            if [ "$latest" != "$current" ] && [ "$highest" = "$latest" ]; then
+            version="$latest$VERSION_SUFFIX"
+            highest=$(printf '%s\n%s\n' "$current_base" "$latest" | sort -V | tail -1)
+            if [ "$latest" != "$current_base" ] && [ "$highest" = "$latest" ]; then
               changed=true
             fi
           fi
           echo "changed=$changed" >> "$GITHUB_OUTPUT"
           echo "latest=$latest"   >> "$GITHUB_OUTPUT"
           echo "current=$current" >> "$GITHUB_OUTPUT"
-          echo "release_tag=$ADDON-v$latest" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          # build.yml refuses a tag whose version differs from config.yaml, so the release tag
+          # carries the full add-on version (suffix included).
+          echo "release_tag=$ADDON-v$version" >> "$GITHUB_OUTPUT"
 
       - name: Apply bump
         if: steps.v.outputs.changed == 'true'
         env:
-          V: ${{ steps.v.outputs.latest }}
+          V: ${{ steps.v.outputs.version }}
+          UPSTREAM_V: ${{ steps.v.outputs.latest }}
           ADDON: ${{ matrix.addon }}
           UPSTREAM: ${{ matrix.upstream }}
+          REPO: ${{ matrix.repo }}
+        # One python3 script rather than `sed -i`: GNU and BSD sed disagree on `-i -E`, and the
+        # regexes must do exactly one substitution each (a silent no-op would open an empty PR).
         run: |
           set -euo pipefail
-          # config.yaml version (1:1 with upstream)
-          sed -i -E "s/^version:.*/version: \"$V\"/" "$ADDON/config.yaml"
-          # pin the upstream image to the exact version (reproducible builds); upstream release
-          # workflows tag the image `:v<version>`
-          sed -i -E "s|^ARG BUILD_FROM=.*|ARG BUILD_FROM=ghcr.io/felixmusil/$UPSTREAM:v$V|" "$ADDON/Dockerfile"
-          # prepend a changelog stub + table row (edit before merge)
           python3 - <<'PY'
           import os, re, pathlib
-          v = os.environ["V"]
+          v = os.environ["V"]                    # add-on version (upstream version + wrapper suffix)
+          upstream_v = os.environ["UPSTREAM_V"]  # bare upstream release version
           addon = os.environ["ADDON"]
           upstream = os.environ["UPSTREAM"]
-          p = pathlib.Path(addon) / "CHANGELOG.md"
+          repo = os.environ.get("REPO", "")
+          root = pathlib.Path(addon)
+
+          def rewrite(path, pattern, repl):
+              text, n = re.subn(pattern, repl, path.read_text(), count=1)
+              assert n == 1, f"{path}: no line matches {pattern!r}"
+              path.write_text(text)
+
+          # config.yaml version; a trailing comment on the line survives
+          rewrite(root / "config.yaml", r'(?m)^version:[ \t]*"?[^"\s]+"?', f'version: "{v}"')
+          # pin the upstream image to the exact version (reproducible builds)
+          if not repo:
+              # our own upstream release workflows tag the image `:v<version>`
+              rewrite(root / "Dockerfile", r"(?m)^ARG BUILD_FROM=.*$",
+                      f"ARG BUILD_FROM=ghcr.io/felixmusil/{upstream}:v{v}")
+          else:
+              # third-party image: keep the image name the Dockerfile already uses and rewrite only
+              # the tag to the bare upstream release version
+              rewrite(root / "Dockerfile", r"(?m)^(ARG BUILD_FROM=.+):[^:/\n]+$",
+                      lambda m: f"{m[1]}:{upstream_v}")
+          # prepend a changelog stub + table row (edit before merge)
+          p = root / "CHANGELOG.md"
           t = p.read_text()
           # add a row right under the table header separator line
-          t = re.sub(r"(\| -+ \| -+ \|\n)", rf"\1| {v:<14} | {v:<21} |\n", t, count=1)
-          # insert a new section before the first existing "## " heading
-          stub = (f"## {v}\n\n_Bundles `{upstream}` v{v}._\n\n"
+          t = re.sub(r"(\| -+ \| -+ \|\n)", rf"\1| {v:<14} | {upstream_v:<21} |\n", t, count=1)
+          # insert a new section before the first existing "## " heading; our upstreams tag
+          # releases `v<version>`, third-party images (repo set) use the bare version
+          tag = f"v{upstream_v}" if not repo else upstream_v
+          stub = (f"## {v}\n\n_Bundles `{upstream}` {tag}._\n\n"
                   f"- TODO: summarize upstream changes (auto-generated stub — edit before merging).\n\n")
           t = re.sub(r"(?m)^## ", stub + "## ", t, count=1)
           p.write_text(t)
@@ -92,8 +138,8 @@ jobs:
             Automated sync of **${{ matrix.addon }}** to upstream
             **${{ matrix.upstream }} v${{ steps.v.outputs.latest }}** (was ${{ steps.v.outputs.current }}).
 
-            - `${{ matrix.addon }}/config.yaml` version → ${{ steps.v.outputs.latest }}
-            - `${{ matrix.addon }}/Dockerfile` `BUILD_FROM` pinned to `${{ matrix.upstream }}:v${{ steps.v.outputs.latest }}`
+            - `${{ matrix.addon }}/config.yaml` version → ${{ steps.v.outputs.version }}
+            - `${{ matrix.addon }}/Dockerfile` `BUILD_FROM` pinned to the `${{ matrix.upstream }}` ${{ steps.v.outputs.latest }} image
             - `${{ matrix.addon }}/CHANGELOG.md` stub added — **edit the notes before merging**
 
             After merge, publish by creating tag/release `${{ steps.v.outputs.release_tag }}`

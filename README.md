@@ -26,6 +26,7 @@ Or add it manually:
 | ------ | ----------- |
 | [Qobuz Proxy](./qobuz-proxy) | Headless Qobuz Connect player that bridges to a DLNA renderer (Sonos, HEOS, …). |
 | [TTS Coordinator](./tts-coordinator) | WuxiaWorld → per-chapter Audiobookshelf audiobooks: queue + web UI here, synthesis on pull-based `tts-worker` machines (laptop over Tailscale). |
+| [Transmission (NordVPN)](./transmission-nordvpn) | Transmission 4 BitTorrent client that only talks to the internet through NordVPN (OpenVPN, fail-closed); Flood UI and an "Add from AudioBookBay" page in the sidebar, downloads into an Audiobookshelf library folder. |
 
 ## Architectures
 
@@ -41,14 +42,15 @@ A typical loop, fastest to most realistic. The first three steps don't need Home
 Every add-on's `config.yaml` is validated automatically on every push/PR by
 [`.github/workflows/lint.yml`](.github/workflows/lint.yml) (a matrix over the add-on directories
 running the [`frenck/action-addon-linter`](https://github.com/frenck/action-addon-linter)). The
-same workflow also runs the repo's own tests: `tts-coordinator/tests/run_sh_test.sh` drives
-`run.sh` through a fake binary (options.json → env → exec), and `tests/test_workflows.py` checks
+same workflow also runs the repo's own tests: each add-on's `tests/run_sh_test.sh` drives its
+`run.sh` through fake binaries (options.json → env → exec), `transmission-nordvpn/tests/*_test.py`
+exercises the AudioBookBay helper against loopback fakes, and `tests/test_workflows.py` checks
 that the release workflows push exactly the `image:version` each `config.yaml` declares.
 
 To run the same linter locally (swap the add-on directory as needed):
 
 ```bash
-docker run --rm -e INPUT_PATH=/addon -v "$PWD/qobuz-proxy":/addon \
+docker run --rm -e INPUT_PATH=/addon -e INPUT_COMMUNITY=false -v "$PWD/qobuz-proxy":/addon \
   $(docker build -q https://github.com/frenck/action-addon-linter.git#v2:src)
 ```
 
@@ -57,6 +59,8 @@ Quick checks without Docker:
 ```bash
 python3 -c "import yaml; yaml.safe_load(open('tts-coordinator/config.yaml')); print('OK')"
 bash tts-coordinator/tests/run_sh_test.sh            # needs jq
+bash transmission-nordvpn/tests/run_sh_test.sh       # needs jq
+python3 -m unittest discover -s transmission-nordvpn/tests -p '*_test.py'
 python3 -m pytest tests -q                           # needs pytest + pyyaml
 ```
 
@@ -120,6 +124,7 @@ The add-ons are versioned independently, so a release tag names the add-on it pu
 | --- | ------ |
 | `tts-coordinator-v0.1.0` | `tts-coordinator` |
 | `qobuz-proxy-v1.4.0` | `qobuz-proxy` |
+| `transmission-nordvpn-v5.5.2.0` | `transmission-nordvpn` |
 | `v1.4.0` | `qobuz-proxy` (legacy namespace, used by `scripts/release.sh`) |
 
 Pushing such a tag triggers [`.github/workflows/build.yml`](.github/workflows/build.yml), which

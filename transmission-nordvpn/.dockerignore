@@ -1,0 +1,4 @@
+# Keep test byte-code out of the image: `COPY rootfs/ /` would ship it otherwise.
+**/__pycache__/
+**/*.pyc
+tests/

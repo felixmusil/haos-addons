@@ -21,6 +21,7 @@ on:
           - all
           - qobuz-proxy
           - tts-coordinator
+          - transmission-nordvpn
 
 permissions:
   contents: read

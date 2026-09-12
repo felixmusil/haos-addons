@@ -17,6 +17,7 @@ jobs:
         addon:
           - qobuz-proxy
           - tts-coordinator
+          - transmission-nordvpn
     steps:
       - uses: actions/checkout@v4
 
@@ -35,6 +36,14 @@ jobs:
 
       - name: run.sh (options.json → env → exec)
         run: bash tts-coordinator/tests/run_sh_test.sh
+
+      - name: transmission-nordvpn run.sh (options.json → env → nginx conf → exec)
+        run: bash transmission-nordvpn/tests/run_sh_test.sh
+
+      # The AudioBookBay helper is stdlib-only and its tests use only unittest, so they run
+      # without installing anything (the add-on image has python3 but no pip).
+      - name: transmission-nordvpn abb_helper unit tests
+        run: python3 -m unittest discover -s transmission-nordvpn/tests -p '*_test.py'
 
       - name: Workflow / config contract tests
         run: |

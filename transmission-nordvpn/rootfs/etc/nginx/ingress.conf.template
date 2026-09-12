@@ -1,0 +1,30 @@
+# Rendered by /run.sh to /etc/nginx/nginx.conf (a COMPLETE nginx.conf: the Ubuntu
+# package's default file is overwritten). Placeholders:
+#   %%RPC_BASIC%%    base64("transmission:<rpc password>")
+#   %%RPC_PASSWORD%% the rpc password (shared secret of the AudioBookBay helper)
+# nginx runs as a daemon so run.sh can go on to exec dumb-init/OpenVPN; logs go to
+# the container's stderr (the add-on Log tab). Only the Supervisor ingress proxy
+# (172.30.32.2) may connect: neighbours on the add-on network are denied.
+worker_processes 1;
+daemon on;
+error_log /dev/stderr;
+events { worker_connections 64; }
+http {
+    access_log off;
+    server {
+        listen 8099 default_server;
+        allow 172.30.32.2; deny all;                 # Supervisor ingress proxy only
+        client_max_body_size 0;
+        location /abb/ { proxy_pass http://127.0.0.1:8098/abb/; proxy_set_header X-Abb-Token "%%RPC_PASSWORD%%"; }
+        # `return` runs before the access phase, so neighbours get this redirect too - harmless, it carries nothing
+        location = / { absolute_redirect off; return 301 ./abb/; }
+        location / {
+            proxy_pass http://127.0.0.1:9091/transmission/;
+            proxy_set_header Authorization "Basic %%RPC_BASIC%%";   # browser never sees the RPC password
+            proxy_set_header Host $http_host;
+            proxy_set_header Accept-Encoding "";
+            proxy_redirect off; proxy_read_timeout 300s;
+            expires -1; add_header Cache-Control "no-store";
+        }
+    }
+}

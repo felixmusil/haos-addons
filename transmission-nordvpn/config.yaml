@@ -1,0 +1,64 @@
+name: Transmission (NordVPN)
+version: "5.5.2.0"                 # <haugene version>.<wrapper revision>
+slug: transmission_nordvpn
+description: Transmission 4 through NordVPN (OpenVPN) with a fail-closed tunnel; Flood UI in the sidebar
+url: https://github.com/felixmusil/haos-addons/tree/main/transmission-nordvpn
+arch: [aarch64, amd64]
+image: ghcr.io/felixmusil/transmission-nordvpn-haos-addon
+init: false
+startup: services
+# No `watchdog:` key (the add-on linter marks it obsolete): the base image ships a Docker
+# HEALTHCHECK (openvpn + transmission-daemon running, network reachable through the tunnel),
+# and the container exits with OpenVPN, so the Supervisor watchdog restarts it either way.
+privileged: [NET_ADMIN]
+devices: ["/dev/net/tun"]
+apparmor: false                    # custom profile is a follow-up; the borrowed one targets another rootfs
+map: [share:rw]
+ingress: true                     # ingress_port omitted = Supervisor default 8099, which the nginx template listens on (pinned by tests/run_sh_test.sh)
+ingress_entry: abb/               # sidebar lands on the "Add from AudioBookBay" page, which links to Flood at ../web/
+ingress_stream: true
+panel_icon: mdi:download-network
+panel_title: Torrents
+panel_admin: false
+ports:
+  9091/tcp: null                   # opt-in direct RPC/web on the LAN/tailnet (needs local_networks)
+ports_description:
+  9091/tcp: Transmission RPC + web UI for direct LAN/Tailscale access (leave unset to reach it only via the sidebar)
+options:
+  nordvpn_username: ""
+  nordvpn_password: ""
+  nordvpn_country: CH
+  nordvpn_category: legacy_p2p
+  nordvpn_protocol: udp
+  nordvpn_server: ""
+  openvpn_custom_config: ""        # basename of /share/transmission/openvpn/<name>.ovpn → provider "custom"
+  rpc_password: ""                 # empty → generated once, stored in /data, printed in the log
+  download_dir: /share/audiobooks        # = the Audiobookshelf library folder: finished torrents become books
+  incomplete_dir: /share/torrents/incomplete   # partial downloads never appear in ABS
+  watch_dir: /share/torrents/watch
+  web_ui: flood-for-transmission
+  local_networks: ""               # e.g. 192.168.2.0/24,100.64.0.0/10 — only with the 9091 port mapped
+  health_check_host: 1.1.1.1
+  log_level: info
+  abb_base_url: https://audiobookbay.lu
+  abb_username: ""                 # AudioBookBay member login; stored in plain text with the other options
+  abb_password: ""
+schema:
+  abb_base_url: url
+  abb_username: str?
+  abb_password: password?
+  nordvpn_username: str
+  nordvpn_password: password
+  nordvpn_country: str
+  nordvpn_category: str
+  nordvpn_protocol: list(udp|tcp)
+  nordvpn_server: str?
+  openvpn_custom_config: str?
+  rpc_password: password?
+  download_dir: str
+  incomplete_dir: str
+  watch_dir: str
+  web_ui: list(flood-for-transmission|stock|combustion|kettu|transmission-web-control|shift|transmissionic)
+  local_networks: str?
+  health_check_host: str
+  log_level: list(trace|debug|info|warn|error|critical)
