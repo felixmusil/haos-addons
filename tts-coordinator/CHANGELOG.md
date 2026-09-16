@@ -5,9 +5,16 @@ is built `FROM ghcr.io/felixmusil/tts-server`).
 
 | Add-on version | Bundles `tts-server`  |
 | -------------- | --------------------- |
+| 0.3.1          | 0.3.1                 |
 | 0.2.1          | 0.2.1                 |
 | 0.2.0          | 0.2.0                 |
 | 0.1.0          | 0.2.0                 |
+
+## 0.3.1
+
+_Bundles `tts-server` v0.3.1._
+
+- TODO: summarize upstream changes (auto-generated stub — edit before merging).
 
 ## Unreleased
 
