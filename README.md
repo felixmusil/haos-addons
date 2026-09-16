@@ -25,7 +25,7 @@ Or add it manually:
 | Add-on | Description |
 | ------ | ----------- |
 | [Qobuz Proxy](./qobuz-proxy) | Headless Qobuz Connect player that bridges to a DLNA renderer (Sonos, HEOS, …). |
-| [TTS Coordinator](./tts-coordinator) | WuxiaWorld → per-chapter Audiobookshelf audiobooks: queue + web UI here, synthesis on pull-based `tts-worker` machines (laptop over Tailscale). |
+| [TTS Coordinator](./tts-coordinator) | WuxiaWorld novels → per-chapter Audiobookshelf audiobooks and Le Grand Continent articles → podcast episodes: queue + web UI here, synthesis on pull-based `tts-worker` machines (laptop over Tailscale). |
 | [Transmission (NordVPN)](./transmission-nordvpn) | Transmission 4 BitTorrent client that only talks to the internet through NordVPN (OpenVPN, fail-closed); Flood UI and an "Add from AudioBookBay" page in the sidebar, downloads into an Audiobookshelf library folder. |
 
 ## Architectures

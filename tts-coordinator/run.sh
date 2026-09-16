@@ -39,6 +39,12 @@ export_opt TTS_NTFY_TOPIC ntfy_topic
 export_opt TTS_ENGINE default_engine
 export_opt TTS_VOICE default_voice
 export_opt WUXIAWORLD_TOKEN wuxiaworld_token
+# Articles (Le Grand Continent → podcast episodes). LGC_COOKIE is read by the scraper library
+# directly; no LGC_COOKIE_CACHE is exported on purpose — a cache file would shadow the option.
+export_opt LGC_COOKIE lgc_cookie
+export_opt TTS_ABS_PODCAST_LIBRARY abs_podcast_library
+export_opt TTS_ARTICLE_ENGINE article_engine
+export_opt TTS_ARTICLE_VOICE article_voice
 
 # Summary for the add-on Log tab — feature flags only, never token values.
 abs_state="disabled (set abs_url + abs_token)"
@@ -53,8 +59,13 @@ api_state="open"
 if [ -n "${TTS_API_TOKEN:-}" ]; then
     api_state="bearer token required"
 fi
+lgc_state="not set (free articles only)"
+if [ -n "${LGC_COOKIE:-}" ]; then
+    lgc_state="set"
+fi
 echo "[run.sh] engine=${TTS_ENGINE:-fake} voice=${TTS_VOICE:-default} log_level=${TTS_LOG_LEVEL}"
 echo "[run.sh] Audiobookshelf: ${abs_state}"
 echo "[run.sh] WuxiaWorld token: ${ww_state}; /api auth: ${api_state}"
+echo "[run.sh] articles: engine=${TTS_ARTICLE_ENGINE:-kyutai} voice=${TTS_ARTICLE_VOICE:-default} podcast library=${TTS_ABS_PODCAST_LIBRARY:-first podcast library}; LGC cookie: ${lgc_state}"
 
 exec tts-server serve --host 0.0.0.0 --port 8880

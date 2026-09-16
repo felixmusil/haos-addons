@@ -1,7 +1,7 @@
 name: TTS Coordinator
 version: "0.2.1"
 slug: tts_coordinator
-description: WuxiaWorld → per-chapter Audiobookshelf audiobooks; queue + web UI, synthesis on remote workers
+description: WuxiaWorld novels and Le Grand Continent articles → Audiobookshelf; queue + web UI, synthesis on remote workers
 url: https://github.com/felixmusil/haos-addons/tree/main/tts-coordinator
 arch:
   - aarch64
@@ -25,6 +25,10 @@ options:
   ntfy_topic: ""
   default_engine: kokoro
   default_voice: af_heart
+  lgc_cookie: ""
+  abs_podcast_library: ""
+  article_engine: kyutai
+  article_voice: cml-tts/fr/10177_10625_000134-0003_enhanced.wav
   log_level: info
 schema:
   abs_url: str?
@@ -35,4 +39,8 @@ schema:
   ntfy_topic: str?
   default_engine: "list(fake|kokoro|piper|kyutai|f5)"
   default_voice: str?
+  lgc_cookie: password?
+  abs_podcast_library: str?
+  article_engine: "list(fake|kokoro|piper|kyutai|f5)"
+  article_voice: str?
   log_level: "list(debug|info|warning|error)"

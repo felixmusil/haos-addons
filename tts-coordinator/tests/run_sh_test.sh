@@ -93,7 +93,9 @@ run_case() { # CASE options-json
 
 # --- case 1: every option set -----------------------------------------------------------------
 WW_TOKEN='{"access_token":"acc1","refresh_token":"ref1","token_type":"Bearer","expires_at":1700000000}'
-run_case full "$(jq -nc --arg ww "$WW_TOKEN" '{
+# A browser Cookie header: `;`-separated, `=` inside values, percent escapes and spaces.
+LGC_COOKIE_VALUE='wordpress_logged_in_ab12=felix%7C1700000000%7Cxyz; wp-settings-1=mfold=o; ev_sid=q=1'
+run_case full "$(jq -nc --arg ww "$WW_TOKEN" --arg lgc "$LGC_COOKIE_VALUE" '{
   abs_url: "http://homeassistant.local:13378",
   abs_token: "eyJabs.token.XYZ",
   abs_library: "Audiobooks",
@@ -102,6 +104,10 @@ run_case full "$(jq -nc --arg ww "$WW_TOKEN" '{
   ntfy_topic: "felix-tts-8f2a",
   default_engine: "kokoro",
   default_voice: "af_heart",
+  lgc_cookie: $lgc,
+  abs_podcast_library: "LeGrandContinent",
+  article_engine: "kyutai",
+  article_voice: "cml-tts/fr/10177_10625_000134-0003_enhanced.wav",
   log_level: "debug"
 }')"
 expect_env TTS_ABS_URL http://homeassistant.local:13378
@@ -114,23 +120,31 @@ expect_env TTS_VOICE af_heart
 expect_env TTS_LOG_LEVEL debug
 # Raw JSON with quotes intact proves `jq -r` (not `jq`, which would re-quote the string).
 expect_env WUXIAWORLD_TOKEN "$WW_TOKEN"
-for secret in eyJabs.token.XYZ pi-shared-secret acc1 ref1; do
+expect_env LGC_COOKIE "$LGC_COOKIE_VALUE"
+expect_env TTS_ABS_PODCAST_LIBRARY LeGrandContinent
+expect_env TTS_ARTICLE_ENGINE kyutai
+expect_env TTS_ARTICLE_VOICE cml-tts/fr/10177_10625_000134-0003_enhanced.wav
+# The cookie cache path must NOT be exported: the scraper prefers the cache file over the
+# option, and nothing in the container ever writes that file.
+expect_absent LGC_COOKIE_CACHE
+for secret in eyJabs.token.XYZ pi-shared-secret acc1 ref1 felix%7C1700000000%7Cxyz; do
     if grep -q -- "$secret" "$TMP/dump/out"; then
         fail "secret '$secret' printed to the add-on log"
     fi
 done
 
 # --- case 2a: every string option blank ----------------------------------------------------------
-run_case blank '{"abs_url":"","abs_token":"","abs_library":"","wuxiaworld_token":"","api_token":"","ntfy_topic":"","default_engine":"kokoro","default_voice":"","log_level":"info"}'
-for name in TTS_ABS_URL TTS_ABS_TOKEN TTS_ABS_LIBRARY TTS_API_TOKEN TTS_NTFY_TOPIC TTS_VOICE WUXIAWORLD_TOKEN; do
+run_case blank '{"abs_url":"","abs_token":"","abs_library":"","wuxiaworld_token":"","api_token":"","ntfy_topic":"","default_engine":"kokoro","default_voice":"","lgc_cookie":"","abs_podcast_library":"","article_engine":"kyutai","article_voice":"","log_level":"info"}'
+for name in TTS_ABS_URL TTS_ABS_TOKEN TTS_ABS_LIBRARY TTS_API_TOKEN TTS_NTFY_TOPIC TTS_VOICE WUXIAWORLD_TOKEN LGC_COOKIE TTS_ABS_PODCAST_LIBRARY TTS_ARTICLE_VOICE; do
     expect_absent "$name"
 done
 expect_env TTS_ENGINE kokoro
+expect_env TTS_ARTICLE_ENGINE kyutai
 expect_env TTS_LOG_LEVEL info
 
 # --- case 2b: empty options file (predates newly added options) ----------------------------------
 run_case missing '{}'
-for name in TTS_ABS_URL TTS_ABS_TOKEN TTS_ABS_LIBRARY TTS_API_TOKEN TTS_NTFY_TOPIC TTS_VOICE WUXIAWORLD_TOKEN TTS_ENGINE; do
+for name in TTS_ABS_URL TTS_ABS_TOKEN TTS_ABS_LIBRARY TTS_API_TOKEN TTS_NTFY_TOPIC TTS_VOICE WUXIAWORLD_TOKEN TTS_ENGINE LGC_COOKIE TTS_ABS_PODCAST_LIBRARY TTS_ARTICLE_ENGINE TTS_ARTICLE_VOICE; do
     expect_absent "$name"
 done
 expect_env TTS_LOG_LEVEL info

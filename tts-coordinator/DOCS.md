@@ -85,6 +85,28 @@ lease simply expires; the chapter is re-done later. You can run several workers.
 Optional worker settings: `TTS_WORKER_NAME` (default hostname), `TTS_WORKER_ENGINES`
 (comma-separated, default all installed), `TTS_WORKER_POLL_S`, `TTS_WORKER_HEARTBEAT_S`.
 
+### 6. Articles from Le Grand Continent (optional)
+
+The **Articles** box in the UI turns a [Le Grand Continent](https://legrandcontinent.eu/fr/)
+article into one episode of a podcast called *Le Grand Continent* in Audiobookshelf. It needs:
+
+1. A **second ABS library of type Podcast** (ABS keeps books and podcasts apart), e.g. named
+   `LeGrandContinent`, with its folder on the USB drive and the folder watcher on. Give the
+   add-on's non-admin ABS user access to it. Put the name in `abs_podcast_library` (blank = the
+   first podcast library on the server).
+2. For subscriber-only articles, your **login cookie**: on the laptop run
+   `uv sync --extra scraper-login && playwright install chromium && uv run lgc-epub login`,
+   log in in the browser window that opens, and paste the `Cookie` header value the command
+   prints into `lgc_cookie`. A cookie copied from DevTools lacks the httpOnly
+   `wordpress_logged_in_*` cookie and only reaches free articles.
+3. A worker with the French engine: `uv sync --extra kyutai` on the laptop, then run
+   `tts-worker` as usual (it advertises every engine it has). `article_engine` /
+   `article_voice` pick what articles are converted with (`kyutai` is the quality choice).
+
+Episodes are titled after the article, dated with its publication date and carry the byline and
+URL. The feed card cannot be deleted (numbering would restart while ABS keeps the old episodes);
+use **Retry failed** for articles that failed.
+
 ## Ingress vs. port 8880
 
 | Access | Auth | Use for |
@@ -119,6 +141,10 @@ api_token: ""
 ntfy_topic: ""
 default_engine: kokoro
 default_voice: af_heart
+lgc_cookie: ""
+abs_podcast_library: ""
+article_engine: kyutai
+article_voice: cml-tts/fr/10177_10625_000134-0003_enhanced.wav
 log_level: info
 ```
 
@@ -132,6 +158,10 @@ log_level: info
 | `ntfy_topic` | [ntfy](https://ntfy.sh) topic for one push per scheduled batch, sent when its last chapter has been published (or failed). Blank = off. |
 | `default_engine` | Engine stamped on newly registered books; a worker must advertise it (`kokoro` by default). Not installed in this add-on — it names what the *workers* run. |
 | `default_voice` | Default voice for new books (`af_heart` for Kokoro). |
+| `lgc_cookie` | Le Grand Continent login cookie (the `Cookie` header captured by `lgc-epub login`). Blank = free articles only. |
+| `abs_podcast_library` | Name of the **Podcast-type** ABS library articles are published into. Blank = the first podcast library. |
+| `article_engine` | Engine for articles (`kyutai` = best French quality; workers must have it installed). |
+| `article_voice` | Voice id for articles; Kyutai voices are paths in the `kyutai/tts-voices` repo. |
 | `log_level` | `debug`, `info`, `warning`, or `error`. |
 
 ## How chapters land in Audiobookshelf
@@ -156,5 +186,8 @@ idempotent: re-publishing a chapter overwrites the same file.
   (Uninstall/reinstall also clears it, but wipes the library queue as well.)
 - With no worker online, chapters stay queued (their text is prefetched meanwhile) until one
   connects.
+- Articles need a Podcast-type ABS library with its own folder watcher on; a podcast uploaded
+  into a Book library is refused with `library … is a book library` in the log. The Le Grand
+  Continent cookie expires when the site logs you out; re-run `lgc-epub login` and paste again.
 - Chapters numbered 10000 and above are rejected (ABS sorts tracks by the first 1-4 digit run).
 - The add-on does not mirror progress/bookmarks; ABS keeps one position per volume-book.

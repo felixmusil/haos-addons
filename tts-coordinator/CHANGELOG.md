@@ -9,6 +9,12 @@ is built `FROM ghcr.io/felixmusil/tts-server`).
 | 0.2.0          | 0.2.0                 |
 | 0.1.0          | 0.2.0                 |
 
+## Unreleased
+
+- Articles from Le Grand Continent: paste a link in the new **Articles** box, the article is
+  converted (Kyutai by default) and published as an episode of one podcast in a Podcast-type ABS
+  library. New options `lgc_cookie`, `abs_podcast_library`, `article_engine`, `article_voice`.
+
 ## 0.2.1
 
 _Bundles `tts-server` v0.2.1._
