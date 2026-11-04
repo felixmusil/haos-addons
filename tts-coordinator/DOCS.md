@@ -160,8 +160,8 @@ log_level: info
 | `default_voice` | Default voice for new books (`af_heart` for Kokoro). |
 | `lgc_cookie` | Le Grand Continent login cookie (the `Cookie` header captured by `lgc-epub login`). Blank = free articles only. |
 | `abs_podcast_library` | Name of the **Podcast-type** ABS library articles are published into. Blank = the first podcast library. |
-| `article_engine` | Engine for articles (`kyutai` = best French quality; workers must have it installed). |
-| `article_voice` | Voice id for articles; Kyutai voices are paths in the `kyutai/tts-voices` repo. |
+| `article_engine` | Engine for articles (`kyutai` = best French quality; `pocket` = Kyutai Pocket TTS, small and CPU-only; workers must have it installed). |
+| `article_voice` | Voice id for articles; Kyutai voices are paths in the `kyutai/tts-voices` repo, Pocket voices look like `fr/estelle`. |
 | `log_level` | `debug`, `info`, `warning`, or `error`. |
 
 ## How chapters land in Audiobookshelf

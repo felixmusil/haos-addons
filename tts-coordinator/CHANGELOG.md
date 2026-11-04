@@ -5,18 +5,32 @@ is built `FROM ghcr.io/felixmusil/tts-server`).
 
 | Add-on version | Bundles `tts-server`  |
 | -------------- | --------------------- |
+| 0.4.0          | 0.4.0                 |
 | 0.3.1          | 0.3.1                 |
 | 0.2.1          | 0.2.1                 |
 | 0.2.0          | 0.2.0                 |
 | 0.1.0          | 0.2.0                 |
 
+## 0.4.0
+
+_Bundles `tts-server` v0.4.0._
+
+- Fixed: publishing stopped for every book once one unit had been failing for about three
+  weeks (for example an article with no Podcast-type library in ABS). Chapters stayed
+  "uploaded" and never reached Audiobookshelf; a restart only reset the clock.
+- `default_engine` and `article_engine` accept `pocket` (Kyutai Pocket TTS: small, CPU-only,
+  English and French voices such as `en/alba` and `fr/estelle`). Workers need
+  `uv sync --extra pocket`.
+- **Reconvert…** on a book card re-queues a chapter range whose audio in ABS is only the
+  early-access teaser; the new file overwrites the stub.
+- **Retry failed** also fills cancelled holes and re-checks chapters parked as early-access
+  teasers; cards show "N skipped". Failed or cancelled articles get a **Retry** button.
+- A worker that is stopped or restarted hands its chapter back at once instead of holding it
+  until the lease expires.
+
 ## 0.3.1
 
 _Bundles `tts-server` v0.3.1._
-
-- TODO: summarize upstream changes (auto-generated stub — edit before merging).
-
-## Unreleased
 
 - Articles from Le Grand Continent: paste a link in the new **Articles** box, the article is
   converted (Kyutai by default) and published as an episode of one podcast in a Podcast-type ABS
