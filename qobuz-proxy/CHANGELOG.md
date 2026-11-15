@@ -5,11 +5,31 @@ is built `FROM ghcr.io/felixmusil/qobuz-proxy`).
 
 | Add-on version | Bundles `qobuz-proxy` |
 | -------------- | --------------------- |
+| 1.4.1          | 1.4.1                 |
+| 1.4.0          | 1.4.0                 |
 | 1.3.11         | 1.3.9                 |
 | 1.3.10         | 1.3.8                 |
 | 1.3.9          | 1.3.7                 |
 | 1.3.8          | 1.3.7                 |
 | 1.3.5          | 1.3.5                 |
+
+## 1.4.1
+
+_Bundles `qobuz-proxy` v1.4.1._
+
+- Fix playback stopping about an hour into a session. The Qobuz Connect token expires after 60
+  minutes and the app only sends a new one when the device is re-selected, so the proxy lost its
+  connection, played one more track and stopped. It now renews the token itself from the stored
+  login, falling back to waiting for the app (with backoff) if Qobuz refuses.
+- Poll DLNA renderers far less often. Playback state and position are served from the 2-second
+  poll loop instead of a fresh SOAP connection every 0.5 s, cutting load on the renderer.
+
+## 1.4.0
+
+_Bundles `qobuz-proxy` v1.4.0._
+
+- Report plays to Qobuz, so tracks played through the add-on show up in Last.fm scrobbles.
+- Sanitize the ingress path before reflecting it in the web UI.
 
 ## 1.3.11
 
