@@ -5,6 +5,7 @@ is built `FROM ghcr.io/felixmusil/qobuz-proxy`).
 
 | Add-on version | Bundles `qobuz-proxy` |
 | -------------- | --------------------- |
+| 1.4.2          | 1.4.2                 |
 | 1.4.1          | 1.4.1                 |
 | 1.4.0          | 1.4.0                 |
 | 1.3.11         | 1.3.9                 |
@@ -12,6 +13,15 @@ is built `FROM ghcr.io/felixmusil/qobuz-proxy`).
 | 1.3.9          | 1.3.7                 |
 | 1.3.8          | 1.3.7                 |
 | 1.3.5          | 1.3.5                 |
+
+## 1.4.2
+
+_Bundles `qobuz-proxy` v1.4.2._
+
+- Fix the hourly pause introduced by 1.4.1's token renewal. After reconnecting, the Qobuz server
+  replays its last session state ("paused"), which the add-on obeyed, pausing the speaker and
+  sometimes making the app move playback to the phone. The replay is now ignored and the real
+  playing state is reported immediately.
 
 ## 1.4.1
 
